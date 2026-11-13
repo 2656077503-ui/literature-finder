@@ -9,13 +9,13 @@ async function notifyOwner(query:string,contact:string){
  const vars=env as any;
  if(!vars.RESEND_API_KEY||!vars.NOTIFY_EMAIL||!vars.NOTIFY_FROM){console.error('Request email notification is not configured');return;}
  try{
-  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${vars.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:vars.NOTIFY_FROM,to:[vars.NOTIFY_EMAIL],subject:'文献查询：有新的人工需求',text:`文献题目、DOI 或研究主题：\n${query}\n\n小红书订单号或昵称：\n${contact}`})});
+  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${vars.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:vars.NOTIFY_FROM,to:[vars.NOTIFY_EMAIL],subject:'文献查询：有新的人工需求',text:`文献题目、DOI 或研究主题：\n${query}\n\n客户 QQ 邮箱（旧版可能为订单号或昵称）：\n${contact}`})});
   if(!response.ok)console.error('Request notification email failed',response.status);
  }catch{console.error('Request notification email could not be sent');}
 }
 async function post(req:Request){
  try {const b=await req.json() as any; const query=String(b.query||'').trim(),contact=String(b.contact||'').trim();
-  if(!query||!contact||query.length>500||contact.length>100)return Response.json({error:'请填写文献题名或 DOI 和小红书订单号或昵称。'},{status:400});
+  if(!query||!contact||query.length>500||contact.length>100)return Response.json({error:'请填写文献信息和联系信息。'},{status:400});
   await getDb().insert(requests).values({query,contact}); await notifyOwner(query,contact); return Response.json({ok:true});
  } catch{return Response.json({error:'提交失败，请稍后重试。'},{status:500});}
 }

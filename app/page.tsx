@@ -42,8 +42,8 @@ export default function Home(){
    const response=await fetch(apiBase+"/api/requests",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({query:q,contact})});
    const data=await response.json() as {error?:string};
    if(!response.ok)throw Error(data.error);
-   T(true);M("需求已提交，请在小红书聊天中等待回复。");
-  }catch(error){M(error instanceof Error&&error.message!=="Load failed"?error.message:"无法连接人工查询服务，请在小红书聊天中发送 DOI／题名及订单号。")}
+   T(true);M("需求已提交，请留意你的 QQ 邮箱。");
+  }catch(error){M(error instanceof Error&&error.message!=="Load failed"?error.message:"无法连接人工查询服务，请在小红书聊天中发送 DOI／题名及 QQ 邮箱。")}
   finally{B(false)}
  }
 
@@ -92,8 +92,8 @@ export default function Home(){
   </section>}
 
   <section className="help-section" id="manual-help">
-   <div className="help-copy"><span className="help-icon"><Headphones size={24}/></span><span className="section-kicker">NEED A HAND?</span><h2>没找到？<br/>交给我们继续找。</h2><p>查询结果不符合要求，或暂时没有开放全文时，留下文献信息和小红书订单号或昵称。我们会在小红书聊天中回复你。</p><p>人工查找按成功交付的文献收费：1 元 / 篇，未能交付不收费。</p><div className="help-footnote"><Check size={15}/> 请先核对题名、作者和 DOI，再提交需求</div></div>
-   <form className="help-form" onSubmit={send}><h3>提交人工查询</h3><label>文献 DOI、完整题目或研究主题<textarea value={q} onChange={e=>{Q(e.target.value);T(false);M("")}} maxLength={500} required placeholder="粘贴文献题目、DOI 或研究主题"/></label><label>小红书订单号或昵称<input value={contact} onChange={e=>{C(e.target.value);T(false);M("")}} maxLength={100} required placeholder="方便我们找到你的订单"/></label><button disabled={busy||sent}>{sent?"已提交":"提交需求"}<ArrowRight size={17}/></button><small>请勿填写密码或其他无关信息。</small></form>
+   <div className="help-copy"><span className="help-icon"><Headphones size={24}/></span><span className="section-kicker">NEED A HAND?</span><h2>没找到？<br/>交给我们继续找。</h2><p>查询结果不符合要求，或暂时没有开放全文时，留下文献信息和你的 QQ 邮箱，方便我们联系你。</p><p>人工查找按成功交付的文献收费：1 元 / 篇，未能交付不收费。</p><div className="help-footnote"><Check size={15}/> 请先核对题名、作者和 DOI，再提交需求</div></div>
+   <form className="help-form" onSubmit={send}><h3>提交人工查询</h3><label>文献 DOI、完整题目或研究主题<textarea value={q} onChange={e=>{Q(e.target.value);T(false);M("")}} maxLength={500} required placeholder="粘贴文献题目、DOI 或研究主题"/></label><label>你的 QQ 邮箱<input type="email" inputMode="email" pattern={"[^@\\s]+@qq\\.com"} title="请输入以 @qq.com 结尾的邮箱" value={contact} onChange={e=>{C(e.target.value);T(false);M("")}} maxLength={100} required placeholder="例如：123456@qq.com"/></label><button disabled={busy||sent}>{sent?"已提交":"提交需求"}<ArrowRight size={17}/></button><small>请勿填写密码或其他无关信息。</small></form>
   </section>
   <footer><span><BookOpen size={17}/> 文献查询服务</span><span>开放全文以实际可获取情况为准</span></footer>
  </main>
