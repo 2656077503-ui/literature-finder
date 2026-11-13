@@ -7,7 +7,7 @@ import {searchChineseOpenAccess,searchDirectly} from "../lib/client-search";
 type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string;source?:string;sourceUrl?:string};
 type Mode = "exact" | "topic";
 type Language = "all" | "zh" | "en";
-type SearchRecord = {id:string;query:string;mode:Mode;items:Item[]};
+type SearchRecord = {id:string;query:string;mode:Mode;items:Item[];createdAt?:string};
 const STORAGE_KEY = "literature-search-records-v1";
 const apiBase = typeof window === "undefined" ? "" : (window as Window & {__LITERATURE_API_BASE__?:string}).__LITERATURE_API_BASE__ || "";
 
@@ -35,10 +35,11 @@ export default function Home(){
     catch(error){const fallback=await chineseSource;if(fallback===null)throw error;items=fallback;M("主查询接口未连接，已查询开放文献来源。");}
    }
    if(mode==="topic"){
-    const extra=await chineseSource||[],combined=[...items.slice(0,10),...extra,...items.slice(10)],seen=new Set<string>();
-    items=combined.filter(item=>{const key=(item.doi||item.title).toLowerCase().trim();if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))).slice(0,15);
+    const extra=await chineseSource||[],combined=[...items.slice(0,10),...extra,...items.slice(10)],seenDoi=new Set<string>(),seenTitle=new Set<string>();
+    for(const old of records)for(const item of old.items){const doi=(item.doi||"").replace(/^https?:\/\/(dx\.)?doi\.org\//i,"").toLowerCase().trim(),title=(item.title||"").toLowerCase().replace(/[^\p{L}\p{N}]+/gu,"");if(doi)seenDoi.add(doi);if(title)seenTitle.add(title);}
+    items=combined.filter(item=>{const doi=item.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i,"").toLowerCase().trim(),title=item.title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,"");if((doi&&seenDoi.has(doi))||(title&&seenTitle.has(title)))return false;if(doi)seenDoi.add(doi);if(title)seenTitle.add(title);return true;}).sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))).slice(0,15);
    }
-   SetRecords(previous=>[{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,query,mode,items},...previous]);
+   SetRecords(previous=>[{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,query,mode,items,createdAt:new Date().toISOString()},...previous]);
   }catch(error){M(error instanceof Error?error.message:"查询失败")}
   finally{B(false)}
  }
@@ -79,7 +80,7 @@ export default function Home(){
     <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":"你的论文题目或研究主题"}</label>
     <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
    </form>
-   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"最多显示 15 篇，优先展示有 PDF 链接的文献。请核对题名和语言；查英文文献建议输入英文关键词。"}</p>
+   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"最多显示 15 篇，优先展示 PDF 链接，并排除本浏览器历史记录中已显示的文献。请核对题名和语言；查英文文献建议输入英文关键词。"}</p>
   </section>
 
   <div className="steps" aria-label="查询流程"><div><span>01</span><strong>输入文献信息</strong></div><i/><div><span>02</span><strong>核对查询结果</strong></div><i/><div><span>03</span><strong>获取全文或寻求协助</strong></div></div>
@@ -88,8 +89,8 @@ export default function Home(){
   {records.length>0&&<section className="results-section" aria-label="查询结果">
    <div className="section-heading"><div><span className="section-kicker">YOUR SEARCHES</span><h2>查询记录 <span className="count">{records.length}</span></h2><p>最近的查询排在前面，重新打开网页后仍可在当前浏览器查看。</p></div><button type="button" className="clear-history" onClick={()=>{SetRecords([]);M("查询记录已清空。")}}><Trash2 size={15}/> 清空记录</button></div>
    {records.map((record,recordIndex)=><div className="search-record" key={record.id}>
-    <div className="record-head"><span className="record-number">{String(records.length-recordIndex).padStart(2,"0")}</span><div><span className="record-mode">{record.mode==="topic"?"研究题目检索":"指定文献查询"}</span><h3>{record.query}</h3></div><span className="record-count">{record.items.length} 条结果</span></div>
-    {record.items.length===0?<div className="empty">暂未找到匹配的文献。你可以在下方提交人工查询。</div>:(record.mode==="topic"?[...record.items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))):record.items).map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
+    <div className="record-head"><span className="record-number">{String(records.length-recordIndex).padStart(2,"0")}</span><div><span className="record-mode">{record.mode==="topic"?"研究题目检索":"指定文献查询"} · {record.createdAt&&!Number.isNaN(Date.parse(record.createdAt))?new Date(record.createdAt).toLocaleString("zh-CN",{hour12:false}):"时间未记录"}</span><h3>{record.query}</h3></div><span className="record-count">{record.items.length} 条结果</span><button type="button" className="clear-history" aria-label={`删除检索记录：${record.query}`} onClick={()=>SetRecords(previous=>previous.filter(item=>item.id!==record.id))}><Trash2 size={15}/> 删除</button></div>
+    {record.items.length===0?<div className="empty">{record.mode==="topic"?"暂未找到新的匹配文献；结果可能已在之前的查询中显示。":"暂未找到匹配的文献。"} 你可以在下方提交人工查询。</div>:(record.mode==="topic"?[...record.items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))):record.items).map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
      <div className="result-top"><span className="result-index">文献 {String(index+1).padStart(2,"0")}</span>{item.pdf?<span className="availability available"><Check size={13}/> 找到 PDF 链接</span>:item.pmc?<span className="availability available"><Check size={13}/> 有开放全文</span>:<span className="availability">全文待核对</span>}</div>
      <h4>{item.title}</h4><p className="result-meta">{[item.authors,item.journal,item.year,item.source].filter(Boolean).join(" · ")||"出版信息未提供"}</p>
      {record.mode==="topic"&&item.abstract&&<p className="abstract">{item.abstract}</p>}
