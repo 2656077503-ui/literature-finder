@@ -16,7 +16,7 @@ function abstractText(index:unknown){
  return positions.sort((a,b)=>a[0]-b[0]).slice(0,55).map(([,word])=>word).join(' ').slice(0,450);
 }
 async function openAlexSearch(query:string,language:string):Promise<Item[]>{
- const url='https://api.openalex.org/works?per_page=15&search='+encodeURIComponent(query)+(language==='all'?'':'&filter=language:'+language);
+ const url='https://api.openalex.org/works?per_page=15&search='+encodeURIComponent(query)+'&filter=language:'+ (language==='all'?'zh%7Cen':language);
  const response=await fetch(url,{signal:AbortSignal.timeout(14000)});
  if(!response.ok)throw Error('topic search failed');
  const data=await response.json() as any;

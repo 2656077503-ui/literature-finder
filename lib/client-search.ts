@@ -96,7 +96,7 @@ function abstractText(index: unknown) {
 }
 
 async function openAlexSearch(query: string, language: "all" | "zh" | "en"): Promise<SearchItem[]> {
-  const data = await getJson("https://api.openalex.org/works?per_page=15&search=" + encodeURIComponent(query) + (language === "all" ? "" : "&filter=language:" + language));
+  const data = await getJson("https://api.openalex.org/works?per_page=15&search=" + encodeURIComponent(query) + "&filter=language:" + (language === "all" ? "zh%7Cen" : language));
   const seen = new Set<string>();
   return (data.results || []).filter((work: any) => {
     if (!work?.title) return false;
