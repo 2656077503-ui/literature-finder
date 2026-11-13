@@ -26,7 +26,7 @@ async function openAlexSearch(query:string):Promise<Item[]>{
   const key=work.title.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
   if(titles.has(key))return false;
   titles.add(key);return true;
- }).slice(0,10).map((work:any)=>{
+ }).slice(0,15).map((work:any)=>{
   const location=work.best_oa_location;
   const pdf=location?.is_oa?httpsUrl(location.pdf_url):'';
   const pmc=location?.is_oa?httpsUrl(location.landing_page_url):'';
@@ -39,7 +39,7 @@ async function openAlexSearch(query:string):Promise<Item[]>{
  });
 }
 async function crossrefSearch(query:string):Promise<Item[]>{
- const url='https://api.crossref.org/works?rows=10&query.bibliographic='+encodeURIComponent(query);
+ const url='https://api.crossref.org/works?rows=15&query.bibliographic='+encodeURIComponent(query);
  const response=await fetch(url,{headers:{'User-Agent':'LiteratureFinder/1.0'},signal:AbortSignal.timeout(14000)});
  if(!response.ok)throw Error('topic search failed');
  const data=await response.json() as any;

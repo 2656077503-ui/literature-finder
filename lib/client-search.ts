@@ -72,7 +72,7 @@ async function crossrefSearch(query: string, exact: boolean): Promise<SearchItem
   const isDoi = /^10\.\d{4,9}\//i.test(doi);
   const url = isDoi
     ? "https://api.crossref.org/works/" + encodeURIComponent(doi)
-    : "https://api.crossref.org/works?rows=" + (exact ? 5 : 10) + "&query.bibliographic=" + encodeURIComponent(query);
+    : "https://api.crossref.org/works?rows=" + (exact ? 5 : 15) + "&query.bibliographic=" + encodeURIComponent(query);
   let data: any;
   try {
     data = await getJson(url);
@@ -113,7 +113,7 @@ async function openAlexSearch(query: string): Promise<SearchItem[]> {
     pmc: work.best_oa_location?.is_oa ? httpsUrl(work.best_oa_location.landing_page_url) : "",
     pdf: work.best_oa_location?.is_oa ? httpsUrl(work.best_oa_location.pdf_url) : "",
     abstract: abstractText(work.abstract_inverted_index),
-  })).sort((a: SearchItem, b: SearchItem) => Number(Boolean(b.pdf)) - Number(Boolean(a.pdf))).slice(0, 10);
+  })).sort((a: SearchItem, b: SearchItem) => Number(Boolean(b.pdf)) - Number(Boolean(a.pdf))).slice(0, 15);
 }
 
 export async function searchDirectly(query: string, mode: "exact" | "topic"): Promise<SearchItem[]> {
