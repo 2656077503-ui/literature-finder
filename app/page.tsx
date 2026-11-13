@@ -2,6 +2,7 @@
 
 import {useEffect, useState} from "react";
 import {ArrowRight, ArrowUpRight, BookOpen, Check, Download, FileText, Headphones, Search, Trash2} from "lucide-react";
+import {searchDirectly} from "../lib/client-search";
 
 type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string};
 type Mode = "exact" | "topic";
@@ -20,10 +21,18 @@ export default function Home(){
  async function search(e:React.FormEvent){
   e.preventDefault();const query=q.trim();if(!query)return;B(true);M("");T(false);
   try{
-   const response=await fetch(apiBase+(mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query));
-   const data=await response.json() as {error?:string;items?:Item[]};
-   if(!response.ok)throw Error(data.error);
-   SetRecords(previous=>[{id:crypto.randomUUID(),query,mode,items:Array.isArray(data.items)?data.items:[]},...previous]);
+   let items:Item[];
+   try{
+    const response=await fetch(apiBase+(mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query));
+    const data=await response.json() as {error?:string;items?:Item[]};
+    if(!response.ok)throw Error(data.error||"查询服务暂时不可用");
+    items=Array.isArray(data.items)?data.items:[];
+   }catch(error){
+    if(!apiBase)throw error;
+    items=await searchDirectly(query,mode);
+    M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");
+   }
+   SetRecords(previous=>[{id:crypto.randomUUID(),query,mode,items},...previous]);
   }catch(error){M(error instanceof Error?error.message:"查询失败")}
   finally{B(false)}
  }
@@ -34,7 +43,7 @@ export default function Home(){
    const data=await response.json() as {error?:string};
    if(!response.ok)throw Error(data.error);
    T(true);M("需求已提交，请在小红书聊天中等待回复。");
-  }catch(error){M(error instanceof Error?error.message:"提交失败")}
+  }catch(error){M(error instanceof Error&&error.message!=="Load failed"?error.message:"无法连接人工查询服务，请在小红书聊天中发送 DOI／题名及订单号。")}
   finally{B(false)}
  }
 
