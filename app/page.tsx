@@ -5,7 +5,7 @@ import {ArrowRight, ArrowUpRight, BookOpen, Check, Download, FileText, Headphone
 import {searchChineseOpenAccess,searchDirectly} from "../lib/client-search";
 
 type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string;source?:string;sourceUrl?:string};
-type Mode = "exact" | "topic";
+type Mode = "exact" | "topic" | "keywords";
 type Language = "all" | "zh" | "en";
 type SearchRecord = {id:string;query:string;mode:Mode;items:Item[];createdAt?:string};
 const STORAGE_KEY = "literature-search-records-v1";
@@ -17,28 +17,28 @@ export default function Home(){
  const [records,SetRecords]=useState<SearchRecord[]>([]),[ready,SetReady]=useState(false);
  const [msg,M]=useState(""),[busy,B]=useState(false),[sent,T]=useState(false);
 
- useEffect(()=>{try{const raw=localStorage.getItem(STORAGE_KEY)||sessionStorage.getItem(STORAGE_KEY);if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))SetRecords(parsed.filter((x):x is SearchRecord=>Boolean(x&&typeof x==="object"&&typeof x.query==="string"&&Array.isArray(x.items)&&["exact","topic"].includes(x.mode))));}}catch{}SetReady(true)},[]);
+ useEffect(()=>{try{const raw=localStorage.getItem(STORAGE_KEY)||sessionStorage.getItem(STORAGE_KEY);if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))SetRecords(parsed.filter((x):x is SearchRecord=>Boolean(x&&typeof x==="object"&&typeof x.query==="string"&&Array.isArray(x.items)&&["exact","topic","keywords"].includes(x.mode))));}}catch{}SetReady(true)},[]);
  useEffect(()=>{if(ready)try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));sessionStorage.removeItem(STORAGE_KEY)}catch{}},[records,ready]);
 
  async function search(e:React.FormEvent){
   e.preventDefault();const query=q.trim();if(!query)return;B(true);M("");T(false);
   try{
    let items:Item[];
-   const chineseSource=mode==="topic"&&language!=="en"&&/[\u3400-\u9fff]/.test(query)?searchChineseOpenAccess(query).catch(()=>null):Promise.resolve(null);
+   const chineseSource=mode!=="exact"&&language!=="en"&&/[\u3400-\u9fff]/.test(query)?searchChineseOpenAccess(query).catch(()=>null):Promise.resolve(null);
    try{
-    const response=await fetch(apiBase+(mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query)+(mode==="topic"?"&language="+language:""));
+    const response=await fetch(apiBase+(mode!=="exact"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query)+(mode!=="exact"?"&language="+language:""));
     const data=await response.json() as {error?:string;items?:Item[]};
     if(!response.ok)throw Error(data.error||"查询服务暂时不可用");
     items=Array.isArray(data.items)?data.items:[];
    }catch{
-    try{items=await searchDirectly(query,mode,language);M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");}
+    try{items=await searchDirectly(query,mode==="exact"?"exact":"topic",language);M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");}
     catch(error){const fallback=await chineseSource;if(fallback===null)throw error;items=fallback;M("主查询接口未连接，已查询开放文献来源。");}
    }
    {
-    const extra=await chineseSource||[],combined=mode==="topic"?[...items.slice(0,10),...extra,...items.slice(10)]:items,seenDoi=new Set<string>(),seenTitle=new Set<string>();
+    const extra=await chineseSource||[],combined=mode!=="exact"?[...items.slice(0,10),...extra,...items.slice(10)]:items,seenDoi=new Set<string>(),seenTitle=new Set<string>();
     for(const old of records)for(const item of old.items){const doi=(item.doi||"").replace(/^https?:\/\/(dx\.)?doi\.org\//i,"").toLowerCase().trim(),title=(item.title||"").toLowerCase().replace(/[^\p{L}\p{N}]+/gu,"");if(doi)seenDoi.add(doi);if(title)seenTitle.add(title);}
     items=combined.filter(item=>{const doi=(item.doi||"").replace(/^https?:\/\/(dx\.)?doi\.org\//i,"").toLowerCase().trim(),title=(item.title||"").toLowerCase().replace(/[^\p{L}\p{N}]+/gu,"");if((doi&&seenDoi.has(doi))||(title&&seenTitle.has(title)))return false;if(doi)seenDoi.add(doi);if(title)seenTitle.add(title);return true;});
-    if(mode==="topic")items=items.sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))).slice(0,15);
+    if(mode!=="exact")items=items.sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))).slice(0,15);
    }
    SetRecords(previous=>[{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,query,mode,items,createdAt:new Date().toISOString()},...previous]);
   }catch(error){M(error instanceof Error?error.message:"查询失败")}
@@ -75,11 +75,12 @@ export default function Home(){
    <div className="mode-switch" role="group" aria-label="选择查询方式">
     <button type="button" className={mode==="exact"?"active":""} aria-pressed={mode==="exact"} onClick={()=>SetMode("exact")}><FileText size={18}/><span>查指定文献<small>已有 DOI 或完整题名</small></span></button>
     <button type="button" className={mode==="topic"?"active":""} aria-pressed={mode==="topic"} onClick={()=>SetMode("topic")}><Search size={18}/><span>按研究题目找文献<small>只有自己的论文题目</small></span></button>
+    <button type="button" className={mode==="keywords"?"active":""} aria-pressed={mode==="keywords"} onClick={()=>SetMode("keywords")}><Search size={18}/><span>按关键词查找<small>输入一个或多个关键词</small></span></button>
    </div>
    <form onSubmit={search} className="search-form">
-    {mode==="topic"&&<fieldset className="language-options"><legend>文献语言</legend>{([["zh","只找中文"],["en","只找英文"],["all","中英文都找"]] as const).map(([value,label])=><label key={value}><input type="radio" name="language" value={value} checked={language===value} onChange={()=>SetLanguage(value)}/>{label}</label>)}</fieldset>}
-    <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":"你的论文题目或研究主题"}</label>
-    <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
+    {mode!=="exact"&&<fieldset className="language-options"><legend>文献语言</legend>{([["zh","只找中文"],["en","只找英文"],["all","中英文都找"]] as const).map(([value,label])=><label key={value}><input type="radio" name="language" value={value} checked={language===value} onChange={()=>SetLanguage(value)}/>{label}</label>)}</fieldset>}
+    <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":mode==="keywords"?"文献关键词":"你的论文题目或研究主题"}</label>
+    <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":mode==="keywords"?"例如：睡眠 老年人 死亡率":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
    </form>
    <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名；已显示过的文献不会重复展示。":"最多显示 15 篇，优先展示 PDF 链接，并排除本浏览器历史记录中已显示的文献。请核对题名和语言；查英文文献建议输入英文关键词。"}</p>
   </section>
@@ -90,11 +91,11 @@ export default function Home(){
   {records.length>0&&<section className="results-section" aria-label="查询结果">
    <div className="section-heading"><div><span className="section-kicker">YOUR SEARCHES</span><h2>查询记录 <span className="count">{records.length}</span></h2><p>最近的查询排在前面，重新打开网页后仍可在当前浏览器查看。</p></div><button type="button" className="clear-history" onClick={()=>{SetRecords([]);M("查询记录已清空。")}}><Trash2 size={15}/> 清空记录</button></div>
    {records.map((record,recordIndex)=><div className="search-record" key={record.id}>
-    <div className="record-head"><span className="record-number">{String(records.length-recordIndex).padStart(2,"0")}</span><div><span className="record-mode">{record.mode==="topic"?"研究题目检索":"指定文献查询"} · {record.createdAt&&!Number.isNaN(Date.parse(record.createdAt))?new Date(record.createdAt).toLocaleString("zh-CN",{hour12:false}):"时间未记录"}</span><h3>{record.query}</h3></div><span className="record-count">{record.items.length} 条结果</span><button type="button" className="clear-history" aria-label={`删除检索记录：${record.query}`} onClick={()=>SetRecords(previous=>previous.filter(item=>item.id!==record.id))}><Trash2 size={15}/> 删除</button></div>
-    {record.items.length===0?<div className="empty">暂未找到新的匹配文献；结果可能已在之前的查询中显示。你可以在下方提交人工查询。</div>:(record.mode==="topic"?[...record.items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))):record.items).map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
+    <div className="record-head"><span className="record-number">{String(records.length-recordIndex).padStart(2,"0")}</span><div><span className="record-mode">{record.mode==="topic"?"研究题目检索":record.mode==="keywords"?"关键词检索":"指定文献查询"} · {record.createdAt&&!Number.isNaN(Date.parse(record.createdAt))?new Date(record.createdAt).toLocaleString("zh-CN",{hour12:false}):"时间未记录"}</span><h3>{record.query}</h3></div><span className="record-count">{record.items.length} 条结果</span><button type="button" className="clear-history" aria-label={`删除检索记录：${record.query}`} onClick={()=>SetRecords(previous=>previous.filter(item=>item.id!==record.id))}><Trash2 size={15}/> 删除</button></div>
+    {record.items.length===0?<div className="empty">暂未找到新的匹配文献；结果可能已在之前的查询中显示。你可以在下方提交人工查询。</div>:(record.mode!=="exact"?[...record.items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))):record.items).map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
      <div className="result-top"><span className="result-index">文献 {String(index+1).padStart(2,"0")}</span>{item.pdf?<span className="availability available"><Check size={13}/> 找到 PDF 链接</span>:item.pmc?<span className="availability available"><Check size={13}/> 有开放全文</span>:<span className="availability">全文待核对</span>}</div>
      <h4>{item.title}</h4><p className="result-meta">{[item.authors,item.journal,item.year,item.source].filter(Boolean).join(" · ")||"出版信息未提供"}</p>
-     {record.mode==="topic"&&item.abstract&&<p className="abstract">{item.abstract}</p>}
+     {record.mode!=="exact"&&item.abstract&&<p className="abstract">{item.abstract}</p>}
      <div className="result-actions">{item.doi&&<a href={"https://doi.org/"+encodeURIComponent(item.doi)} target="_blank" rel="noreferrer"><ArrowUpRight size={15}/> 出版页面</a>}{item.sourceUrl&&<a href={item.sourceUrl} target="_blank" rel="noreferrer"><ArrowUpRight size={15}/> DOAJ 页面</a>}{item.pmc&&<a href={item.pmc} target="_blank" rel="noreferrer"><BookOpen size={15}/> 免费全文</a>}{item.pdf&&<a className="pdf-link" href={item.pdf} target="_blank" rel="noreferrer"><Download size={15}/> 查看 / 下载 PDF</a>}{!item.pmc&&!item.pdf&&<span>暂无已确认的开放全文</span>}</div>
     </article>)}
    </div>)}
