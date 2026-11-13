@@ -2,9 +2,9 @@
 
 import {useEffect, useState} from "react";
 import {ArrowRight, ArrowUpRight, BookOpen, Check, Download, FileText, Headphones, Search, Trash2} from "lucide-react";
-import {searchDirectly} from "../lib/client-search";
+import {searchChineseOpenAccess,searchDirectly} from "../lib/client-search";
 
-type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string};
+type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string;source?:string;sourceUrl?:string};
 type Mode = "exact" | "topic";
 type Language = "all" | "zh" | "en";
 type SearchRecord = {id:string;query:string;mode:Mode;items:Item[]};
@@ -24,16 +24,20 @@ export default function Home(){
   e.preventDefault();const query=q.trim();if(!query)return;B(true);M("");T(false);
   try{
    let items:Item[];
+   const chineseSource=mode==="topic"&&language!=="en"&&/[\u3400-\u9fff]/.test(query)?searchChineseOpenAccess(query).catch(()=>null):Promise.resolve(null);
    try{
     const response=await fetch(apiBase+(mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query)+(mode==="topic"?"&language="+language:""));
     const data=await response.json() as {error?:string;items?:Item[]};
     if(!response.ok)throw Error(data.error||"查询服务暂时不可用");
     items=Array.isArray(data.items)?data.items:[];
    }catch{
-    items=await searchDirectly(query,mode,language);
-    M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");
+    try{items=await searchDirectly(query,mode,language);M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");}
+    catch(error){const fallback=await chineseSource;if(fallback===null)throw error;items=fallback;M("主查询接口未连接，已查询开放文献来源。");}
    }
-   if(mode==="topic")items=[...items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf)));
+   if(mode==="topic"){
+    const extra=await chineseSource||[],combined=[...items.slice(0,10),...extra,...items.slice(10)],seen=new Set<string>();
+    items=combined.filter(item=>{const key=(item.doi||item.title).toLowerCase().trim();if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))).slice(0,15);
+   }
    SetRecords(previous=>[{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,query,mode,items},...previous]);
   }catch(error){M(error instanceof Error?error.message:"查询失败")}
   finally{B(false)}
@@ -75,7 +79,7 @@ export default function Home(){
     <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":"你的论文题目或研究主题"}</label>
     <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
    </form>
-   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"最多显示 15 篇，优先展示有 PDF 链接的文献。查英文文献建议输入英文关键词。"}</p>
+   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"最多显示 15 篇，优先展示有 PDF 链接的文献。请核对题名和语言；查英文文献建议输入英文关键词。"}</p>
   </section>
 
   <div className="steps" aria-label="查询流程"><div><span>01</span><strong>输入文献信息</strong></div><i/><div><span>02</span><strong>核对查询结果</strong></div><i/><div><span>03</span><strong>获取全文或寻求协助</strong></div></div>
@@ -87,9 +91,9 @@ export default function Home(){
     <div className="record-head"><span className="record-number">{String(records.length-recordIndex).padStart(2,"0")}</span><div><span className="record-mode">{record.mode==="topic"?"研究题目检索":"指定文献查询"}</span><h3>{record.query}</h3></div><span className="record-count">{record.items.length} 条结果</span></div>
     {record.items.length===0?<div className="empty">暂未找到匹配的文献。你可以在下方提交人工查询。</div>:(record.mode==="topic"?[...record.items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))):record.items).map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
      <div className="result-top"><span className="result-index">文献 {String(index+1).padStart(2,"0")}</span>{item.pdf?<span className="availability available"><Check size={13}/> 找到 PDF 链接</span>:item.pmc?<span className="availability available"><Check size={13}/> 有开放全文</span>:<span className="availability">全文待核对</span>}</div>
-     <h4>{item.title}</h4><p className="result-meta">{[item.authors,item.journal,item.year].filter(Boolean).join(" · ")||"出版信息未提供"}</p>
+     <h4>{item.title}</h4><p className="result-meta">{[item.authors,item.journal,item.year,item.source].filter(Boolean).join(" · ")||"出版信息未提供"}</p>
      {record.mode==="topic"&&item.abstract&&<p className="abstract">{item.abstract}</p>}
-     <div className="result-actions">{item.doi&&<a href={"https://doi.org/"+encodeURIComponent(item.doi)} target="_blank" rel="noreferrer"><ArrowUpRight size={15}/> 出版页面</a>}{item.pmc&&<a href={item.pmc} target="_blank" rel="noreferrer"><BookOpen size={15}/> 免费全文</a>}{item.pdf&&<a className="pdf-link" href={item.pdf} target="_blank" rel="noreferrer"><Download size={15}/> 查看 / 下载 PDF</a>}{!item.pmc&&!item.pdf&&<span>暂无已确认的开放全文</span>}</div>
+     <div className="result-actions">{item.doi&&<a href={"https://doi.org/"+encodeURIComponent(item.doi)} target="_blank" rel="noreferrer"><ArrowUpRight size={15}/> 出版页面</a>}{item.sourceUrl&&<a href={item.sourceUrl} target="_blank" rel="noreferrer"><ArrowUpRight size={15}/> DOAJ 页面</a>}{item.pmc&&<a href={item.pmc} target="_blank" rel="noreferrer"><BookOpen size={15}/> 免费全文</a>}{item.pdf&&<a className="pdf-link" href={item.pdf} target="_blank" rel="noreferrer"><Download size={15}/> 查看 / 下载 PDF</a>}{!item.pmc&&!item.pdf&&<span>暂无已确认的开放全文</span>}</div>
     </article>)}
    </div>)}
   </section>}

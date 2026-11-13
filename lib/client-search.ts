@@ -7,10 +7,32 @@ type SearchItem = {
   pmc: string;
   pdf: string;
   abstract?: string;
+  source?: string;
+  sourceUrl?: string;
 };
 
 function cleanDoi(value: string) {
   return value.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").replace(/^doi:\s*/i, "");
+}
+
+// DOAJ provides open article metadata. Journal language is not always article language.
+export async function searchChineseOpenAccess(query: string): Promise<SearchItem[]> {
+  const data = await getJson("https://doaj.org/api/v4/search/articles/" + encodeURIComponent(query) + "?pageSize=30");
+  return (data.results || []).filter((result: any) => {
+    const b = result.bibjson;
+    return typeof b?.title === "string" && (b.journal?.language || []).some((language: string) => ["zh", "zho", "chi"].includes(language.toLowerCase()));
+  }).map((result: any) => {
+    const b = result.bibjson;
+    const links: any[] = b.link || [];
+    const pdf = links.find(link => link.type === "fulltext" && (link.content_type === "pdf" || /\.pdf(?:[?#]|$)/i.test(link.url || "")) && httpsUrl(link.url));
+    const fulltext = links.find(link => link.type === "fulltext" && httpsUrl(link.url));
+    return {
+      title: b.title, doi: b.identifier?.find((id: any) => id.type?.toLowerCase() === "doi")?.id || "",
+      year: String(b.year || ""), authors: (b.author || []).slice(0, 4).map((a: any) => a.name).filter(Boolean).join(", "),
+      journal: b.journal?.title || "", pmc: httpsUrl(fulltext?.url), pdf: httpsUrl(pdf?.url), source: "DOAJ",
+      sourceUrl: /^[a-f0-9]{32}$/i.test(result.id || "") ? "https://doaj.org/article/" + result.id : "",
+    };
+  });
 }
 
 function httpsUrl(value: unknown) {

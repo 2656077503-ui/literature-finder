@@ -1,4 +1,5 @@
 import {publicCors} from '../cors';
+import {env} from 'cloudflare:workers';
 
 type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string};
 
@@ -16,9 +17,10 @@ function abstractText(index:unknown){
  return positions.sort((a,b)=>a[0]-b[0]).slice(0,55).map(([,word])=>word).join(' ').slice(0,450);
 }
 async function openAlexSearch(query:string,language:string):Promise<Item[]>{
- const url='https://api.openalex.org/works?per_page=15&search='+encodeURIComponent(query)+'&filter=language:'+ (language==='all'?'zh%7Cen':language);
+ const key=String((env as any).OPENALEX_API_KEY||'');
+ const url='https://api.openalex.org/works?per_page=15&search='+encodeURIComponent(query)+'&filter=language:'+ (language==='all'?'zh%7Cen':language)+(key?'&api_key='+encodeURIComponent(key):'');
  const response=await fetch(url,{signal:AbortSignal.timeout(14000)});
- if(!response.ok)throw Error('topic search failed');
+ if(!response.ok){console.error('OpenAlex topic search failed',response.status);throw Error('topic search failed');}
  const data=await response.json() as any;
  const titles=new Set<string>();
  return (data.results||[]).filter((work:any)=>{
