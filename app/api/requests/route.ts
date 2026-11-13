@@ -9,7 +9,7 @@ async function notifyOwner(query:string,contact:string){
  const vars=env as any;
  if(!vars.RESEND_API_KEY||!vars.NOTIFY_EMAIL||!vars.NOTIFY_FROM){console.error('Request email notification is not configured');return;}
  try{
-  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${vars.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:vars.NOTIFY_FROM,to:[vars.NOTIFY_EMAIL],subject:'文献查询：有新的人工需求',text:`客户提交了新的文献查询需求。\n\n文献信息：\n${query}\n\n小红书订单号或昵称：\n${contact}\n\n请在小红书联系客户。\n商家后台（如手机打不开，可在电脑上访问）：\nhttps://literature-finder-26471.genial-seed-5139.chatgpt.site/admin`})});
+  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${vars.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:vars.NOTIFY_FROM,to:[vars.NOTIFY_EMAIL],subject:'文献查询：有新的人工需求',text:`文献题目、DOI 或研究主题：\n${query}\n\n小红书订单号或昵称：\n${contact}`})});
   if(!response.ok)console.error('Request notification email failed',response.status);
  }catch{console.error('Request notification email could not be sent');}
 }
