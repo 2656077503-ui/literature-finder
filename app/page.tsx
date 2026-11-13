@@ -113,7 +113,7 @@ export default function Home(){
   </section>}
 
   <section className="help-section" id="manual-help">
-   <div className="help-copy"><span className="help-icon"><Headphones size={24}/></span><span className="section-kicker">NEED A HAND?</span><h2>没找到？<br/>交给我们继续找。</h2><p>查询结果不符合要求，或暂时没有开放全文时，留下文献信息和你的 QQ 邮箱，方便我们联系你。</p><p>人工查找按成功交付的文献收费：1 元 / 篇，未能交付不收费。</p><div className="help-footnote"><Check size={15}/> 请先核对题名、作者和 DOI，再提交需求</div></div>
+   <div className="help-copy"><span className="help-icon"><Headphones size={24}/></span><span className="section-kicker">NEED A HAND?</span><h2>没找到？<br/>交给我们继续找。</h2><div className="help-footnote"><Check size={15}/> 请先核对题名、作者和 DOI，再提交需求</div></div>
    <form className="help-form" onSubmit={send}><h3>提交人工查询</h3><label>文献 DOI、完整题目或研究主题<textarea value={q} onChange={e=>{Q(e.target.value);T(false);M("")}} maxLength={500} required placeholder="粘贴文献题目、DOI 或研究主题"/></label><label>你的 QQ 邮箱<input type="email" inputMode="email" pattern={"[^@\\s]+@qq\\.com"} title="请输入以 @qq.com 结尾的邮箱" value={contact} onChange={e=>{C(e.target.value);T(false);M("")}} maxLength={100} required placeholder="例如：123456@qq.com"/></label><button disabled={busy||sent}>{sent?"已提交":"提交需求"}<ArrowRight size={17}/></button><small>请勿填写密码或其他无关信息。</small></form>
   </section>
   <footer><span><BookOpen size={17}/> 文献查询服务</span><span>开放全文以实际可获取情况为准</span></footer>
