@@ -27,12 +27,11 @@ export default function Home(){
     const data=await response.json() as {error?:string;items?:Item[]};
     if(!response.ok)throw Error(data.error||"查询服务暂时不可用");
     items=Array.isArray(data.items)?data.items:[];
-   }catch(error){
-    if(!apiBase)throw error;
+   }catch{
     items=await searchDirectly(query,mode);
     M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");
    }
-   SetRecords(previous=>[{id:crypto.randomUUID(),query,mode,items},...previous]);
+   SetRecords(previous=>[{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,query,mode,items},...previous]);
   }catch(error){M(error instanceof Error?error.message:"查询失败")}
   finally{B(false)}
  }
@@ -72,7 +71,7 @@ export default function Home(){
     <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":"你的论文题目或研究主题"}</label>
     <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
    </form>
-   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"结果是待核对的候选文献；英文题目或关键词通常能找到更多结果。"}</p>
+   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"结果是待核对的候选文献；英文题目或关键词通常能找到更多结果。"} <small>版本 11.13.2</small></p>
   </section>
 
   <div className="steps" aria-label="查询流程"><div><span>01</span><strong>输入文献信息</strong></div><i/><div><span>02</span><strong>核对查询结果</strong></div><i/><div><span>03</span><strong>获取全文或寻求协助</strong></div></div>
