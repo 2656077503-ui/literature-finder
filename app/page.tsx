@@ -17,8 +17,8 @@ export default function Home(){
  const [records,SetRecords]=useState<SearchRecord[]>([]),[ready,SetReady]=useState(false);
  const [msg,M]=useState(""),[busy,B]=useState(false),[sent,T]=useState(false);
 
- useEffect(()=>{try{const raw=sessionStorage.getItem(STORAGE_KEY);if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))SetRecords(parsed.filter((x):x is SearchRecord=>Boolean(x&&typeof x==="object"&&typeof x.query==="string"&&Array.isArray(x.items)&&["exact","topic"].includes(x.mode))));}}catch{}SetReady(true)},[]);
- useEffect(()=>{if(ready)try{sessionStorage.setItem(STORAGE_KEY,JSON.stringify(records))}catch{}},[records,ready]);
+ useEffect(()=>{try{const raw=localStorage.getItem(STORAGE_KEY)||sessionStorage.getItem(STORAGE_KEY);if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))SetRecords(parsed.filter((x):x is SearchRecord=>Boolean(x&&typeof x==="object"&&typeof x.query==="string"&&Array.isArray(x.items)&&["exact","topic"].includes(x.mode))));}}catch{}SetReady(true)},[]);
+ useEffect(()=>{if(ready)try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));sessionStorage.removeItem(STORAGE_KEY)}catch{}},[records,ready]);
 
  async function search(e:React.FormEvent){
   e.preventDefault();const query=q.trim();if(!query)return;B(true);M("");T(false);
@@ -82,7 +82,7 @@ export default function Home(){
   {msg&&<p className="notice" role="status">{msg}</p>}
 
   {records.length>0&&<section className="results-section" aria-label="查询结果">
-   <div className="section-heading"><div><span className="section-kicker">YOUR SEARCHES</span><h2>查询记录 <span className="count">{records.length}</span></h2><p>最近的查询排在前面，刷新页面也会保留本标签页的记录。</p></div><button type="button" className="clear-history" onClick={()=>{SetRecords([]);M("查询记录已清空。")}}><Trash2 size={15}/> 清空记录</button></div>
+   <div className="section-heading"><div><span className="section-kicker">YOUR SEARCHES</span><h2>查询记录 <span className="count">{records.length}</span></h2><p>最近的查询排在前面，重新打开网页后仍可在当前浏览器查看。</p></div><button type="button" className="clear-history" onClick={()=>{SetRecords([]);M("查询记录已清空。")}}><Trash2 size={15}/> 清空记录</button></div>
    {records.map((record,recordIndex)=><div className="search-record" key={record.id}>
     <div className="record-head"><span className="record-number">{String(records.length-recordIndex).padStart(2,"0")}</span><div><span className="record-mode">{record.mode==="topic"?"研究题目检索":"指定文献查询"}</span><h3>{record.query}</h3></div><span className="record-count">{record.items.length} 条结果</span></div>
     {record.items.length===0?<div className="empty">暂未找到匹配的文献。你可以在下方提交人工查询。</div>:(record.mode==="topic"?[...record.items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))):record.items).map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
