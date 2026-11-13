@@ -104,7 +104,7 @@ async function openAlexSearch(query: string): Promise<SearchItem[]> {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).slice(0, 10).map((work: any) => ({
+  }).map((work: any) => ({
     title: work.title,
     doi: typeof work.doi === "string" ? cleanDoi(work.doi) : "",
     year: String(work.publication_year || ""),
@@ -113,7 +113,7 @@ async function openAlexSearch(query: string): Promise<SearchItem[]> {
     pmc: work.best_oa_location?.is_oa ? httpsUrl(work.best_oa_location.landing_page_url) : "",
     pdf: work.best_oa_location?.is_oa ? httpsUrl(work.best_oa_location.pdf_url) : "",
     abstract: abstractText(work.abstract_inverted_index),
-  }));
+  })).sort((a: SearchItem, b: SearchItem) => Number(Boolean(b.pdf)) - Number(Boolean(a.pdf))).slice(0, 10);
 }
 
 export async function searchDirectly(query: string, mode: "exact" | "topic"): Promise<SearchItem[]> {

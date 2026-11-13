@@ -31,6 +31,7 @@ export default function Home(){
     items=await searchDirectly(query,mode);
     M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");
    }
+   if(mode==="topic")items=[...items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf)));
    SetRecords(previous=>[{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,query,mode,items},...previous]);
   }catch(error){M(error instanceof Error?error.message:"查询失败")}
   finally{B(false)}
@@ -71,7 +72,7 @@ export default function Home(){
     <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":"你的论文题目或研究主题"}</label>
     <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
    </form>
-   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"结果是待核对的候选文献；英文题目或关键词通常能找到更多结果。"} <small>版本 11.13.2</small></p>
+   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"优先展示有 PDF 链接的候选文献，请核对相关性与链接。"} <small>版本 11.13.3</small></p>
   </section>
 
   <div className="steps" aria-label="查询流程"><div><span>01</span><strong>输入文献信息</strong></div><i/><div><span>02</span><strong>核对查询结果</strong></div><i/><div><span>03</span><strong>获取全文或寻求协助</strong></div></div>
@@ -81,7 +82,7 @@ export default function Home(){
    <div className="section-heading"><div><span className="section-kicker">YOUR SEARCHES</span><h2>查询记录 <span className="count">{records.length}</span></h2><p>最近的查询排在前面，刷新页面也会保留本标签页的记录。</p></div><button type="button" className="clear-history" onClick={()=>{SetRecords([]);M("查询记录已清空。")}}><Trash2 size={15}/> 清空记录</button></div>
    {records.map((record,recordIndex)=><div className="search-record" key={record.id}>
     <div className="record-head"><span className="record-number">{String(records.length-recordIndex).padStart(2,"0")}</span><div><span className="record-mode">{record.mode==="topic"?"研究题目检索":"指定文献查询"}</span><h3>{record.query}</h3></div><span className="record-count">{record.items.length} 条结果</span></div>
-    {record.items.length===0?<div className="empty">暂未找到匹配的文献。你可以在下方提交人工查询。</div>:record.items.map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
+    {record.items.length===0?<div className="empty">暂未找到匹配的文献。你可以在下方提交人工查询。</div>:(record.mode==="topic"?[...record.items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf))):record.items).map((item,index)=><article className="result-card" key={item.doi||record.id+"-"+index}>
      <div className="result-top"><span className="result-index">文献 {String(index+1).padStart(2,"0")}</span>{item.pdf?<span className="availability available"><Check size={13}/> 找到 PDF 链接</span>:item.pmc?<span className="availability available"><Check size={13}/> 有开放全文</span>:<span className="availability">全文待核对</span>}</div>
      <h4>{item.title}</h4><p className="result-meta">{[item.authors,item.journal,item.year].filter(Boolean).join(" · ")||"出版信息未提供"}</p>
      {record.mode==="topic"&&item.abstract&&<p className="abstract">{item.abstract}</p>}
