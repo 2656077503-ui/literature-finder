@@ -6,12 +6,14 @@ import {searchDirectly} from "../lib/client-search";
 
 type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string};
 type Mode = "exact" | "topic";
+type Language = "all" | "zh" | "en";
 type SearchRecord = {id:string;query:string;mode:Mode;items:Item[]};
 const STORAGE_KEY = "literature-search-records-v1";
 const apiBase = typeof window === "undefined" ? "" : (window as Window & {__LITERATURE_API_BASE__?:string}).__LITERATURE_API_BASE__ || "";
 
 export default function Home(){
  const [q,Q]=useState(""),[contact,C]=useState(""),[mode,SetMode]=useState<Mode>("exact");
+ const [language,SetLanguage]=useState<Language>("all");
  const [records,SetRecords]=useState<SearchRecord[]>([]),[ready,SetReady]=useState(false);
  const [msg,M]=useState(""),[busy,B]=useState(false),[sent,T]=useState(false);
 
@@ -23,12 +25,12 @@ export default function Home(){
   try{
    let items:Item[];
    try{
-    const response=await fetch(apiBase+(mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query));
+    const response=await fetch(apiBase+(mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query)+(mode==="topic"?"&language="+language:""));
     const data=await response.json() as {error?:string;items?:Item[]};
     if(!response.ok)throw Error(data.error||"查询服务暂时不可用");
     items=Array.isArray(data.items)?data.items:[];
    }catch{
-    items=await searchDirectly(query,mode);
+    items=await searchDirectly(query,mode,language);
     M("主查询接口未连接，已通过备用文献源查询。PDF 链接以实际可访问情况为准。");
    }
    if(mode==="topic")items=[...items].sort((a,b)=>Number(Boolean(b.pdf))-Number(Boolean(a.pdf)));
@@ -69,10 +71,11 @@ export default function Home(){
     <button type="button" className={mode==="topic"?"active":""} aria-pressed={mode==="topic"} onClick={()=>SetMode("topic")}><Search size={18}/><span>按研究题目找文献<small>只有自己的论文题目</small></span></button>
    </div>
    <form onSubmit={search} className="search-form">
+    {mode==="topic"&&<fieldset className="language-options"><legend>文献语言</legend>{([["zh","只找中文"],["en","只找英文"],["all","中英文都找"]] as const).map(([value,label])=><label key={value}><input type="radio" name="language" value={value} checked={language===value} onChange={()=>SetLanguage(value)}/>{label}</label>)}</fieldset>}
     <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":"你的论文题目或研究主题"}</label>
     <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
    </form>
-   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"优先展示有 PDF 链接的候选文献，请核对相关性与链接。"} <small>版本 11.13.3</small></p>
+   <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名。":"最多显示 15 篇，优先展示有 PDF 链接的文献。查英文文献建议输入英文关键词。"}</p>
   </section>
 
   <div className="steps" aria-label="查询流程"><div><span>01</span><strong>输入文献信息</strong></div><i/><div><span>02</span><strong>核对查询结果</strong></div><i/><div><span>03</span><strong>获取全文或寻求协助</strong></div></div>

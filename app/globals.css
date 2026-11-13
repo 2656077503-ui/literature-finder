@@ -44,6 +44,10 @@ main{max-width:1180px;margin:auto;padding:0 34px}
 .mode-switch button span{display:block;font-size:15px;font-weight:750}
 .mode-switch button small{display:block;color:#83938a;font-weight:450;margin-top:3px;font-size:11px}
 .search-form label{display:block;font-size:13px;font-weight:750;margin-bottom:10px;color:#40584b}
+.language-options{display:flex;flex-wrap:wrap;gap:10px 18px;border:0;padding:0;margin:0 0 18px}
+.language-options legend{font-size:13px;font-weight:750;color:#40584b;margin-bottom:8px}
+.language-options label{display:flex;align-items:center;gap:6px;margin:0;font-weight:500}
+.language-options input{accent-color:#285749}
 .search-row{display:flex;gap:10px}
 .search-field{display:flex;align-items:center;gap:11px;flex:1;min-width:0;padding:0 16px;border:1px solid #cddbcf;border-radius:11px;background:white;color:#8aa294}
 .search-field:focus-within{outline:3px solid #deede1;border-color:#80a489}

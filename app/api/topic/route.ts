@@ -15,8 +15,8 @@ function abstractText(index:unknown){
  for(const [word,places] of Object.entries(index))if(Array.isArray(places))for(const place of places)if(Number.isInteger(place)&&place>=0&&place<400)positions.push([place,word]);
  return positions.sort((a,b)=>a[0]-b[0]).slice(0,55).map(([,word])=>word).join(' ').slice(0,450);
 }
-async function openAlexSearch(query:string):Promise<Item[]>{
- const url='https://api.openalex.org/works?per_page=15&search='+encodeURIComponent(query);
+async function openAlexSearch(query:string,language:string):Promise<Item[]>{
+ const url='https://api.openalex.org/works?per_page=15&search='+encodeURIComponent(query)+(language==='all'?'':'&filter=language:'+language);
  const response=await fetch(url,{signal:AbortSignal.timeout(14000)});
  if(!response.ok)throw Error('topic search failed');
  const data=await response.json() as any;
@@ -70,8 +70,9 @@ async function topic(request:Request){
  const query=new URL(request.url).searchParams.get('q')?.trim()||'';
  if(query.length<4||query.length>500)return Response.json({error:'请输入至少 4 个字的研究题目或关键词'}, {status:400});
  try{
-  const chinese=/[\u3400-\u9fff]/.test(query);
-  const items=chinese?await crossrefSearch(query):await openAlexSearch(query);
+  const requested=new URL(request.url).searchParams.get('language')||'all';
+  if(!['all','zh','en'].includes(requested))return Response.json({error:'文献语言选项无效。'}, {status:400});
+  const items=await openAlexSearch(query,requested);
   return Response.json({items});
  }catch{return Response.json({error:'相关文献检索暂时不可用，请稍后重试或提交人工查询。'}, {status:502})}
 }

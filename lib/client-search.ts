@@ -95,8 +95,8 @@ function abstractText(index: unknown) {
   return positions.sort((a, b) => a[0] - b[0]).slice(0, 55).map(([, word]) => word).join(" ").slice(0, 450);
 }
 
-async function openAlexSearch(query: string): Promise<SearchItem[]> {
-  const data = await getJson("https://api.openalex.org/works?per_page=15&search=" + encodeURIComponent(query));
+async function openAlexSearch(query: string, language: "all" | "zh" | "en"): Promise<SearchItem[]> {
+  const data = await getJson("https://api.openalex.org/works?per_page=15&search=" + encodeURIComponent(query) + (language === "all" ? "" : "&filter=language:" + language));
   const seen = new Set<string>();
   return (data.results || []).filter((work: any) => {
     if (!work?.title) return false;
@@ -116,10 +116,10 @@ async function openAlexSearch(query: string): Promise<SearchItem[]> {
   })).sort((a: SearchItem, b: SearchItem) => Number(Boolean(b.pdf)) - Number(Boolean(a.pdf))).slice(0, 15);
 }
 
-export async function searchDirectly(query: string, mode: "exact" | "topic"): Promise<SearchItem[]> {
+export async function searchDirectly(query: string, mode: "exact" | "topic", language: "all" | "zh" | "en" = "all"): Promise<SearchItem[]> {
   try {
     if (mode === "exact") return await crossrefSearch(query, true);
-    return /[\u3400-\u9fff]/.test(query) ? await crossrefSearch(query, false) : await openAlexSearch(query);
+    return await openAlexSearch(query, language);
   } catch {
     throw new Error("当前网络无法连接文献数据库。请切换网络重试，或在小红书聊天中发送 DOI／题名。");
   }
