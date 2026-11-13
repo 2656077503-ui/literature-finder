@@ -1,4 +1,6 @@
-export async function GET(req: Request) {
+import {publicCors} from '../cors';
+
+async function search(req: Request) {
  const q = new URL(req.url).searchParams.get('q')?.trim() || '';
  if (!q || q.length > 500) return Response.json({error:'请输入文献题目或 DOI'}, {status:400});
  const doi = q.replace(/^https?:\/\/(dx\.)?doi\.org\//i,'').replace(/^doi:\s*/i,'');
@@ -26,3 +28,5 @@ export async function GET(req: Request) {
   return Response.json({items:out});
  } catch {return Response.json({error:'查询服务暂时不可用，请稍后重试或提交人工查询。'}, {status:502});}
 }
+
+export async function GET(req: Request) {return publicCors(await search(req));}

@@ -7,6 +7,7 @@ type Item = {title:string;doi:string;year:string;authors:string;journal:string;p
 type Mode = "exact" | "topic";
 type SearchRecord = {id:string;query:string;mode:Mode;items:Item[]};
 const STORAGE_KEY = "literature-search-records-v1";
+const apiBase = typeof window === "undefined" ? "" : (window as Window & {__LITERATURE_API_BASE__?:string}).__LITERATURE_API_BASE__ || "";
 
 export default function Home(){
  const [q,Q]=useState(""),[contact,C]=useState(""),[mode,SetMode]=useState<Mode>("exact");
@@ -19,7 +20,7 @@ export default function Home(){
  async function search(e:React.FormEvent){
   e.preventDefault();const query=q.trim();if(!query)return;B(true);M("");T(false);
   try{
-   const response=await fetch((mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query));
+   const response=await fetch(apiBase+(mode==="topic"?"/api/topic":"/api/search")+"?q="+encodeURIComponent(query));
    const data=await response.json() as {error?:string;items?:Item[]};
    if(!response.ok)throw Error(data.error);
    SetRecords(previous=>[{id:crypto.randomUUID(),query,mode,items:Array.isArray(data.items)?data.items:[]},...previous]);
@@ -29,7 +30,7 @@ export default function Home(){
  async function send(e:React.FormEvent){
   e.preventDefault();B(true);M("");
   try{
-   const response=await fetch("/api/requests",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({query:q,contact})});
+   const response=await fetch(apiBase+"/api/requests",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({query:q,contact})});
    const data=await response.json() as {error?:string};
    if(!response.ok)throw Error(data.error);
    T(true);M("需求已提交，请在小红书聊天中等待回复。");
@@ -39,8 +40,8 @@ export default function Home(){
 
  return <main className="site-shell">
   <header className="site-header">
-   <a className="brand" href="/" aria-label="文献查询服务首页"><span className="brand-mark"><BookOpen size={21} strokeWidth={1.8}/></span><span><strong>文献查询</strong><small>LITERATURE FINDER</small></span></a>
-   <nav className="header-nav"><a href="#manual-help">人工协助</a><a className="owner-link" href="/admin">商家后台 <ArrowUpRight size={15}/></a></nav>
+   <a className="brand" href="./" aria-label="文献查询服务首页"><span className="brand-mark"><BookOpen size={21} strokeWidth={1.8}/></span><span><strong>文献查询</strong><small>LITERATURE FINDER</small></span></a>
+   <nav className="header-nav"><a href="#manual-help">人工协助</a><a className="owner-link" href={apiBase+"/admin"}>商家后台 <ArrowUpRight size={15}/></a></nav>
   </header>
 
   <section className="hero">

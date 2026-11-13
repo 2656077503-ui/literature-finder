@@ -1,3 +1,5 @@
+import {publicCors} from '../cors';
+
 type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string};
 
 function httpsUrl(value:unknown){
@@ -64,7 +66,7 @@ async function crossrefSearch(query:string):Promise<Item[]>{
  }));
 }
 
-export async function GET(request:Request){
+async function topic(request:Request){
  const query=new URL(request.url).searchParams.get('q')?.trim()||'';
  if(query.length<4||query.length>500)return Response.json({error:'请输入至少 4 个字的研究题目或关键词'}, {status:400});
  try{
@@ -73,3 +75,5 @@ export async function GET(request:Request){
   return Response.json({items});
  }catch{return Response.json({error:'相关文献检索暂时不可用，请稍后重试或提交人工查询。'}, {status:502})}
 }
+
+export async function GET(request:Request){return publicCors(await topic(request));}
