@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {ArrowRight, ArrowUpRight, BookOpen, Check, Download, FileText, Headphones, Search, Trash2} from "lucide-react";
+import {ArrowRight, ArrowUpRight, BookOpen, Check, Download, FileText, Headphones, Plus, Search, Trash2, X} from "lucide-react";
 import {searchChineseOpenAccess,searchDirectly} from "../lib/client-search";
 
 type Item = {title:string;doi:string;year:string;authors:string;journal:string;pmc:string;pdf:string;abstract?:string;source?:string;sourceUrl?:string};
@@ -14,6 +14,8 @@ const apiBase = typeof window === "undefined" ? "" : (window as Window & {__LITE
 export default function Home(){
  const [q,Q]=useState(""),[contact,C]=useState(""),[mode,SetMode]=useState<Mode>("exact");
  const [language,SetLanguage]=useState<Language>("all");
+ const [keywords,SetKeywords]=useState<string[]>(["",""]);
+ const [keywordMatch,SetKeywordMatch]=useState<"AND"|"OR">("AND");
  const [records,SetRecords]=useState<SearchRecord[]>([]),[ready,SetReady]=useState(false);
  const [msg,M]=useState(""),[busy,B]=useState(false),[sent,T]=useState(false);
 
@@ -21,7 +23,13 @@ export default function Home(){
  useEffect(()=>{if(ready)try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));sessionStorage.removeItem(STORAGE_KEY)}catch{}},[records,ready]);
 
  async function search(e:React.FormEvent){
-  e.preventDefault();const query=q.trim();if(!query)return;B(true);M("");T(false);
+  e.preventDefault();
+  const terms=keywords.map(word=>word.trim().replace(/["\\]/g," ").replace(/\s+/g," ").trim()).filter(Boolean);
+  const query=mode==="keywords"?terms.map(word=>`"${word}"`).join(` ${keywordMatch} `):q.trim();
+  if(!query){M("请输入至少一个关键词。");return;}
+  if(query.length>500){M("关键词总长度过长，请缩短后再试。");return;}
+  if(mode==="keywords")Q(query);
+  B(true);M("");T(false);
   try{
    let items:Item[];
    const chineseSource=mode!=="exact"&&language!=="en"&&/[\u3400-\u9fff]/.test(query)?searchChineseOpenAccess(query).catch(()=>null):Promise.resolve(null);
@@ -79,8 +87,11 @@ export default function Home(){
    </div>
    <form onSubmit={search} className="search-form">
     {mode!=="exact"&&<fieldset className="language-options"><legend>文献语言</legend>{([["zh","只找中文"],["en","只找英文"],["all","中英文都找"]] as const).map(([value,label])=><label key={value}><input type="radio" name="language" value={value} checked={language===value} onChange={()=>SetLanguage(value)}/>{label}</label>)}</fieldset>}
-    <label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":mode==="keywords"?"文献关键词":"你的论文题目或研究主题"}</label>
-    <div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":mode==="keywords"?"例如：睡眠 老年人 死亡率":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div>
+    {mode==="keywords"?<div className="keyword-builder">
+     <fieldset className="language-options"><legend>关键词组合</legend><label><input type="radio" name="keyword-match" checked={keywordMatch==="AND"} onChange={()=>SetKeywordMatch("AND")}/>同时包含所有关键词</label><label><input type="radio" name="keyword-match" checked={keywordMatch==="OR"} onChange={()=>SetKeywordMatch("OR")}/>包含任意一个关键词</label></fieldset>
+     {keywords.map((word,index)=><div className="keyword-row" key={index}><label htmlFor={`keyword-${index}`}>关键词 {index+1}</label><div className="keyword-input"><div className="search-field"><Search size={20} aria-hidden="true"/><input id={`keyword-${index}`} value={word} onChange={e=>{const value=e.target.value;SetKeywords(previous=>previous.map((v,i)=>i===index?value:v));T(false);}} maxLength={120} placeholder={index===0?"例如：睡眠":"例如：老年人"}/></div>{keywords.length>1&&<button type="button" className="keyword-remove" aria-label={`删除关键词 ${index+1}`} onClick={()=>SetKeywords(previous=>previous.filter((_,i)=>i!==index))}><X size={18}/></button>}</div></div>)}
+     <button type="button" className="keyword-add" disabled={keywords.length>=8} onClick={()=>SetKeywords(previous=>[...previous,""])}><Plus size={16}/> 添加关键词</button><button className="search-submit keyword-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button>
+    </div>:<><label htmlFor="literature-query">{mode==="exact"?"文献 DOI 或完整题名":"你的论文题目或研究主题"}</label><div className="search-row"><div className="search-field"><Search size={20} aria-hidden="true"/><input id="literature-query" value={q} onChange={e=>{Q(e.target.value);T(false)}} placeholder={mode==="exact"?"例如：10.1038/nature12373":"例如：老年人睡眠与膳食多样性"} maxLength={500} required/></div><button className="search-submit" disabled={busy}>{busy?"查询中…":"开始查询"}<ArrowRight size={18}/></button></div></>}
    </form>
    <p className="search-hint">{mode==="exact"?"支持 DOI、DOI 链接及中英文文献题名；已显示过的文献不会重复展示。":"最多显示 15 篇，优先展示 PDF 链接，并排除本浏览器历史记录中已显示的文献。请核对题名和语言；查英文文献建议输入英文关键词。"}</p>
   </section>

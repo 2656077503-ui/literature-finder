@@ -48,6 +48,14 @@ main{max-width:1180px;margin:auto;padding:0 34px}
 .language-options legend{font-size:13px;font-weight:750;color:#40584b;margin-bottom:8px}
 .language-options label{display:flex;align-items:center;gap:6px;margin:0;font-weight:500}
 .language-options input{accent-color:#285749}
+.keyword-builder{display:grid;gap:10px}
+.keyword-builder .language-options{margin-bottom:4px}
+.keyword-row label{margin-bottom:6px}
+.keyword-input{display:flex;gap:8px}
+.keyword-remove,.keyword-add{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #d4e2d5;border-radius:10px;background:#f7faf6;color:#34594a;padding:10px 13px;cursor:pointer}
+.keyword-add{justify-self:start}
+.keyword-add:disabled{opacity:.5;cursor:not-allowed}
+.keyword-submit{min-height:48px;justify-self:start}
 .search-row{display:flex;gap:10px}
 .search-field{display:flex;align-items:center;gap:11px;flex:1;min-width:0;padding:0 16px;border:1px solid #cddbcf;border-radius:11px;background:white;color:#8aa294}
 .search-field:focus-within{outline:3px solid #deede1;border-color:#80a489}
